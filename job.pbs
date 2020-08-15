@@ -1,25 +1,25 @@
 #!/bin/bash
 #PBS -N nombre_del_job
-#PBS -l walltime=100:00:00
+#PBS -l walltime=720:00:00
 #PBS -l nodes=1:ppn=24
 #PBS -e $PBS_JOBID/output.log
 #PBS -o $PBS_JOBID/output.out
 cd $PBS_O_WORKDIR
 
 # Cargando los modulos necesarios
-source /opt/openmpi-2.1.1/environment.sh
+source /home/modules/opt/openmpi-3.1.6/env.sh
 ###################################################################################
 
 # Asignando las variables
-folder_results=results # nombre de la carpeta en donde se almacenara los resultados
-folder_to_process=to-process # nombre de la carpeta en donde se almacenara todos los ficheros utilizados por el job.
+use_scratch=false
+folder_results='results' # nombre de la carpeta en donde se almacenara los resultados
+folder_to_process='to-process' # nombre de la carpeta en donde se almacenara todos los ficheros utilizados por el job.
 ###################################################################################
 
 # Creando las carpetas
 base=$PBS_JOBID
 mkdir $base
 mkdir $base/$folder_results # Creamos la carpeta de resultados
-# mkdir $base/output # Creamos la carpeta de salida
 ###################################################################################
 
 # Mostrando informacion
@@ -31,19 +31,23 @@ echo La cantidad de procesadores usados es: $NP
 ###################################################################################
 
 # Utilizando scratch
-SCRDIR=/scratch/$USER/$PBS_JOBID
-mkdir -p $SCRDIR
-cp -r $folder_to_process $SCRDIR
-cd $SCRDIR/$folder_to_process
+if [ $use_scratch = true ]; then
+    SCRDIR=/scratch/$USER/$PBS_JOBID
+    mkdir -p $SCRDIR
+    cp -r $folder_to_process $SCRDIR
+    cd $SCRDIR
+fi
 ###################################################################################
+
+cd $folder_to_process
 
 # Ejecutando los comandos requeridos
 mpicc hello_world.c -o hello_world
 mpiexec -np $NP -hostfile $PBS_NODEFILE ./hello_world > salida.out
 ###################################################################################
 
-#sleep 30
-
 # Copiando los resultados del scratch a la carpeta de trabajo
 mv *.out  $PBS_O_WORKDIR/$base/$folder_results # copiamos los resultados
-rm -r $SCRDIR # Eliminamos los archivos de scratch
+if [ $use_scratch = true ]; then
+    rm -r $SCRDIR # Eliminamos los archivos de scratch
+fi
